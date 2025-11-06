@@ -1,0 +1,74 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+
+# --- 1. ĐỌC VÀ CHUẨN HÓA ẢNH ---
+
+f = cv2.imread('Assets/Flowers.jpg', 0)
+if f is None:
+    raise FileNotFoundError('Không tìm được ảnh')
+f = f / 255
+
+# --- 2. CHUYỂN SANG MIỀN TẦN SỐ (Frequency Domain) ---
+
+F = np.fft.fft2(f)
+F = np.fft.fftshift(F)
+
+# --- 3. TẠO BỘ LỌC LAPLACIAN H(u, v) ---
+
+P, Q = F.shape
+H = np.zeros((P, Q), dtype=np.float32)
+for u in range(P):
+    for v in range(Q):
+        H[u, v] = -4*np.pi*np.pi*((u-P/2)**2 + (v-Q/2)**2)
+
+# --- 4. TẠO ẢNH LAPLACIAN ---
+
+lap = H * F
+lap = np.fft.ifftshift(lap)
+lap = np.fft.ifft2(lap)
+lap = np.real(lap)
+
+# --- 5. TĂNG CƯỜNG VÀ CẮT GIÁ TRỊ ---
+old_range = np.max(lap) - np.min(lap)
+new_range = 2
+lap_scaled = (((lap - np.min(lap)) * new_range) / old_range) -1
+
+c = -1
+g = f + c*lap_scaled
+g = np.clip(g, 0, 1)
+
+# --- 6. HIỂN THỊ KẾT QUẢ ---
+plt.figure(figsize=(20, 5), dpi=150)
+
+# 1. Ảnh Gốc
+plt.subplot(1, 5, 1)
+plt.imshow(f, cmap='gray')
+plt.title('H1. Ảnh Gốc')
+plt.axis('off')
+
+# 2. Phổ Tần Số
+plt.subplot(1, 5, 2)
+plt.imshow(np.log1p(np.abs(F)), cmap='gray')
+plt.title('H2. Phổ Tần Số')
+plt.axis('off')
+
+plt.subplot(1, 5, 3)
+plt.imshow(H, cmap='gray')
+plt.title('H3. Bộ lọc Laplacian')
+plt.axis('off')
+
+# 3. Ảnh Laplacian
+plt.subplot(1, 5, 4)
+plt.imshow(lap_scaled, cmap='gray')
+plt.title('H4. Ảnh Laplacian')
+plt.axis('off')
+
+# 4. Ảnh Tăng Cường
+plt.subplot(1, 5, 5)
+plt.imshow(g, cmap='gray')
+plt.title('H5. Ảnh Tăng Cường ')
+plt.axis('off')
+
+plt.tight_layout()
+plt.show()
